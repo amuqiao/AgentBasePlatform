@@ -1,0 +1,198 @@
+# ─────────────────────────────────────────────
+# Python
+# ─────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+
+# 构建 / 分发
+build/
+dist/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# 单元测试 / 覆盖率
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+pytest.ini
+
+# ─────────────────────────────────────────────
+# 虚拟环境
+# ─────────────────────────────────────────────
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.conda/
+conda-env/
+
+# ─────────────────────────────────────────────
+# 环境变量 / 密钥配置（严禁提交）
+# ─────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.env
+config/secrets.*
+config/local.*
+**/api_keys.*
+**/credentials.*
+
+# ─────────────────────────────────────────────
+# AgentScope / LLM 相关
+# ─────────────────────────────────────────────
+# 运行时日志与对话记录
+runs/
+agentscope_runs/
+*.log
+*.logs/
+
+# 模型权重 / 本地模型文件
+models/
+checkpoints/
+*.bin
+*.safetensors
+*.pt
+*.pth
+*.ckpt
+*.gguf
+*.ggml
+*.onnx
+
+# 向量数据库 / 索引文件
+vector_store/
+chroma_db/
+faiss_index/
+*.faiss
+*.index
+*.pkl
+
+# ─────────────────────────────────────────────
+# 数据文件
+# ─────────────────────────────────────────────
+data/raw/
+data/processed/
+data/cache/
+*.csv
+*.jsonl
+*.parquet
+*.arrow
+*.hdf5
+*.h5
+# 保留 examples 下的示例数据
+!examples/**/*.json
+!examples/**/*.jsonl
+
+# ─────────────────────────────────────────────
+# Jupyter Notebook
+# ─────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+profile_default/
+ipython_config.py
+
+# ─────────────────────────────────────────────
+# IDE / 编辑器
+# ─────────────────────────────────────────────
+# VS Code / Cursor
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json.example
+
+# JetBrains
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# Vim / Emacs
+*.swp
+*.swo
+*~
+\#*\#
+.\#*
+
+# ─────────────────────────────────────────────
+# 操作系统
+# ─────────────────────────────────────────────
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# Linux
+*~
+
+# ─────────────────────────────────────────────
+# Docker / 部署
+# ─────────────────────────────────────────────
+.dockerignore
+docker-compose.override.yml
+*.pid
+
+# ─────────────────────────────────────────────
+# 依赖管理
+# ─────────────────────────────────────────────
+node_modules/
+.npm
+.yarn/
+package-lock.json
+yarn.lock
+
+# Poetry
+poetry.lock
+
+# ─────────────────────────────────────────────
+# 临时文件 / 输出
+# ─────────────────────────────────────────────
+tmp/
+temp/
+.tmp/
+output/
+outputs/
+*.tmp
+*.bak
+*.orig
+*.pid
+*.seed
+*.pid.lock
