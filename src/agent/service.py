@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.common.exceptions import ForbiddenException, NotFoundException
+from src.runtime.model_provider import normalize_llm_config
 
 from .models import Agent, AgentVersion
 
@@ -30,7 +31,7 @@ class AgentService:
             description=description,
             agent_type=agent_type,
             system_prompt=system_prompt,
-            model_config_json=model_config or {},
+            model_config_json=normalize_llm_config(model_config),
             tool_config=tool_config or {},
         )
         self.db.add(agent)
@@ -68,6 +69,8 @@ class AgentService:
         self, agent_id: uuid.UUID, tenant_id: uuid.UUID, **kwargs
     ) -> Agent:
         agent = await self.get_agent(agent_id, tenant_id)
+        if "model_config_json" in kwargs and kwargs["model_config_json"] is not None:
+            kwargs["model_config_json"] = normalize_llm_config(kwargs["model_config_json"])
         for key, value in kwargs.items():
             if value is not None and hasattr(agent, key):
                 setattr(agent, key, value)

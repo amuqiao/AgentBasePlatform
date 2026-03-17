@@ -8,7 +8,7 @@ from src.common.middleware.request_context import RequestContextMiddleware
 from src.config import get_settings
 
 from src.auth.router import router as auth_router
-from src.agent.router import router as agent_router
+from src.agent.router import router as agent_router, chat_router as agent_chat_router
 from src.conversation.router import router as conversation_router
 
 settings = get_settings()
@@ -26,6 +26,7 @@ def create_app() -> FastAPI:
         description="智能体平台后端 API - MVP",
         docs_url="/docs",
         redoc_url="/redoc",
+        swagger_ui_parameters={"persistAuthorization": True},
     )
 
     app.state.debug = settings.DEBUG
@@ -47,6 +48,7 @@ def create_app() -> FastAPI:
     # --- Routers ---
     app.include_router(auth_router)
     app.include_router(agent_router)
+    app.include_router(agent_chat_router)
     app.include_router(conversation_router)
 
     # --- Health check ---

@@ -5,15 +5,15 @@ from pydantic import BaseModel, Field
 
 
 class RegisterRequest(BaseModel):
-    email: str = Field(..., min_length=5, max_length=256, description="邮箱")
-    password: str = Field(..., min_length=6, max_length=128, description="密码")
-    display_name: str = Field(..., min_length=1, max_length=128, description="显示名称")
-    tenant_name: str = Field(default="", max_length=128, description="租户名称（留空自动创建）")
+    email: str = Field(..., min_length=5, max_length=256, description="邮箱", examples=["test@example.com"])
+    password: str = Field(..., min_length=6, max_length=128, description="密码", examples=["test123456"])
+    display_name: str = Field(..., min_length=1, max_length=128, description="显示名称", examples=["测试用户"])
+    tenant_name: str = Field(default="", max_length=128, description="租户名称（留空自动创建）", examples=["测试团队"])
 
 
 class LoginRequest(BaseModel):
-    email: str = Field(..., description="邮箱")
-    password: str = Field(..., description="密码")
+    email: str = Field(..., description="邮箱", examples=["test@example.com"])
+    password: str = Field(..., description="密码", examples=["test123456"])
 
 
 class RefreshRequest(BaseModel):

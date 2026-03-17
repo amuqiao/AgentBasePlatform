@@ -95,6 +95,11 @@ class ConversationService:
             user_message=content,
             history=history,
             model_config=agent.model_config_json if agent else None,
+            agent_type=agent.agent_type if agent else "chat",
+            agent_name=agent.name if agent else "Assistant",
+            agent_id=agent.id if agent else None,
+            tenant_id=conv.tenant_id,
+            tool_config=agent.tool_config if agent else None,
         )
 
         assistant_msg = Message(
@@ -135,6 +140,11 @@ class ConversationService:
             user_message=content,
             history=history,
             model_config=agent.model_config_json if agent else None,
+            agent_type=agent.agent_type if agent else "chat",
+            agent_name=agent.name if agent else "Assistant",
+            agent_id=agent.id if agent else None,
+            tenant_id=conv.tenant_id,
+            tool_config=agent.tool_config if agent else None,
         ):
             full_response += chunk
             yield chunk

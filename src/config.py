@@ -18,6 +18,19 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
+    # LLM Model (Qwen via DashScope)
+    DASHSCOPE_API_KEY: str = ""
+    DEFAULT_MODEL_NAME: str = "qwen-max"
+    DEFAULT_MODEL_STREAM: bool = True
+    DEFAULT_MODEL_ENABLE_THINKING: bool = False
+    DEFAULT_MODEL_MAX_TOKENS: int = 4096
+    DEFAULT_MODEL_TEMPERATURE: float = 0.7
+
+    # Agent Runtime
+    AGENT_MAX_REACT_ITERATIONS: int = 10
+    AGENT_EXECUTION_TIMEOUT: int = 120
+    AGENT_FALLBACK_TO_MOCK: bool = False
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 
