@@ -1,4 +1,5 @@
 import logging
+import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,6 +13,7 @@ from src.agent.router import router as agent_router, chat_router as agent_chat_r
 from src.conversation.router import router as conversation_router
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO),
@@ -50,6 +52,16 @@ def create_app() -> FastAPI:
     app.include_router(agent_router)
     app.include_router(agent_chat_router)
     app.include_router(conversation_router)
+
+    @app.on_event("startup")
+    async def log_api_docs_url():
+        host = os.getenv("APP_HOST", "127.0.0.1")
+        port = os.getenv("APP_PORT", "8000")
+        display_host = "127.0.0.1" if host in {"0.0.0.0", "::"} else host
+        if app.docs_url:
+            logger.info("Swagger UI docs: http://%s:%s%s", display_host, port, app.docs_url)
+        if app.redoc_url:
+            logger.info("ReDoc docs: http://%s:%s%s", display_host, port, app.redoc_url)
 
     # --- Health check ---
     @app.get("/health", tags=["系统"])
