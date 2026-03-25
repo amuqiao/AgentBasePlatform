@@ -1,12 +1,12 @@
 """
-Agent 直接调用接口验证脚本。
+OpenAI 兼容接口验证脚本。
 
-测试 POST /api/v1/agents/{agent_id}/chat       （非流式）
-     POST /api/v1/agents/{agent_id}/chat/stream （流式 SSE）
+测试 POST /v1/chat/completions  （stream=false 非流式 + stream=true 流式 SSE）
+     GET  /v1/models             （智能体列表）
 
 验证内容：
-   1. ChatAgent  非流式直接调用 + 响应 model 字段验证
-   2. ChatAgent  流式直接调用
+   1. ChatAgent  非流式（stream=false）+ model 字段验证
+   2. ChatAgent  流式（stream=true）SSE
    3. ChatAgent  多轮历史（通过 messages 数组传递）
    4. ChatAgent  省略 model_name（验证自动填充 + 调用）
    5. ReActAgent 非流式 — execute_python_code 工具调用验证（tool_calls）
@@ -16,6 +16,7 @@ Agent 直接调用接口验证脚本。
    9. ReActAgent 流式  — MCP 工具流式调用（stdio 计算器）
   10. ReActAgent 非流式 — MCP 错误场景（不存在的 server，验证优雅降级）
   11. ReActAgent 非流式 — Skill 工具验证（current-time）
+  12. GET /v1/models — 智能体列表格式验证
 
 前置条件：
   - 服务已启动
@@ -69,26 +70,40 @@ async def create_agent(client, headers, payload) -> dict:
 
 
 async def call_chat(client, headers, agent_id, messages) -> dict:
-    """非流式调用 /chat，返回完整响应 data。"""
+    """非流式调用 POST /v1/chat/completions（stream=false）。
+
+    model 字段传入 agent_id，返回拍平的 dict：content / model / tool_calls / agent_id / agent_name
+    """
     r = await client.post(
-        f"/api/v1/agents/{agent_id}/chat",
+        "/v1/chat/completions",
         headers=headers,
-        json={"messages": messages},
+        json={"model": agent_id, "messages": messages, "stream": False},
         timeout=120,
     )
-    assert r.status_code == 200 and r.json()["code"] == 0, f"调用失败: {r.text}"
-    return r.json()["data"]
+    assert r.status_code == 200, f"调用失败 (HTTP {r.status_code}): {r.text}"
+    body = r.json()
+    assert "choices" in body, f"响应缺少 choices 字段: {body}"
+    return {
+        "content": body["choices"][0]["message"]["content"],
+        "model": body.get("model", ""),
+        "tool_calls": body.get("tool_calls", []),
+        "agent_id": body.get("agent_id"),
+        "agent_name": body.get("agent_name"),
+    }
 
 
 async def call_chat_stream(client, headers, agent_id, messages) -> tuple[str, int]:
-    """流式调用 /chat/stream，返回 (完整文本, chunk数)。"""
+    """流式调用 POST /v1/chat/completions（stream=true），返回 (完整文本, 有内容的chunk数)。
+
+    解析 OpenAI chat.completion.chunk 格式：choices[0].delta.content
+    """
     full_text = ""
     chunks = 0
     async with client.stream(
         "POST",
-        f"/api/v1/agents/{agent_id}/chat/stream",
+        "/v1/chat/completions",
         headers=headers,
-        json={"messages": messages},
+        json={"model": agent_id, "messages": messages, "stream": True},
         timeout=120,
     ) as resp:
         assert resp.status_code == 200, f"SSE 失败: {resp.status_code}"
@@ -99,9 +114,11 @@ async def call_chat_stream(client, headers, agent_id, messages) -> tuple[str, in
             if payload == "[DONE]":
                 break
             data = json.loads(payload)
-            text = data.get("content", "")
-            full_text += text
-            chunks += 1
+            delta = data.get("choices", [{}])[0].get("delta", {})
+            text = delta.get("content", "")
+            if text:
+                full_text += text
+                chunks += 1
     return full_text, chunks
 
 
@@ -116,7 +133,7 @@ def _print_tool_calls(tool_calls: list[dict]):
             print(f"      result: {result_str}")
 
 
-TOTAL_TESTS = 11
+TOTAL_TESTS = 12
 
 
 async def main():
@@ -499,6 +516,33 @@ async def main():
             failed += 1
             results.append("✗")
 
+        # ==== TEST 12: GET /v1/models ====
+        print(f"\n{'-'*65}")
+        print(f"[12/{TOTAL_TESTS}] GET /v1/models — 智能体列表格式验证")
+        print(f"{'-'*65}")
+        try:
+            r = await client.get("/v1/models", headers=headers)
+            assert r.status_code == 200, f"HTTP {r.status_code}: {r.text}"
+            body = r.json()
+            assert body.get("object") == "list", f"object 字段异常: {body}"
+            data_list = body.get("data", [])
+            assert len(data_list) > 0, "data 列表为空"
+            for m in data_list:
+                assert "id" in m and "object" in m and m["object"] == "model", f"model 对象格式异常: {m}"
+            print(f"  → 共 {len(data_list)} 个可用模型")
+            for m in data_list[:3]:
+                print(f"    id={m['id'][:8]}... name={m.get('name')} type={m.get('agent_type')}")
+            # 验证 chat_agent 的 id 在列表中
+            ids = [m["id"] for m in data_list]
+            assert chat_agent["id"] in ids, f"创建的 ChatAgent 未出现在 /v1/models 列表中"
+            print(f"  ✓ /v1/models 格式正确，智能体 ID 可用于 model 字段")
+            passed += 1
+            results.append("✓")
+        except Exception as e:
+            print(f"  ✗ {e}")
+            failed += 1
+            results.append("✗")
+
         # ---- 汇总 ----
         total = passed + failed
         print(f"\n{'='*65}")
@@ -508,17 +552,18 @@ async def main():
             print(f"⚠️  通过 {passed}/{total}，失败 {failed}")
 
         test_names = [
-            "ChatAgent  /chat          非流式 + model 验证",
-            "ChatAgent  /chat/stream   流式 SSE",
-            "ChatAgent  /chat          多轮历史",
-            "ChatAgent  /chat          自动配置 (省略 model_name)",
-            "ReActAgent /chat          builtin execute_python_code",
-            "ReActAgent /chat/stream   流式工具调用",
-            "ReActAgent /chat          builtin view_text_file",
-            "ReActAgent /chat          MCP stdio 计算器 (非流式)",
-            "ReActAgent /chat/stream   MCP stdio 计算器 (流式)",
-            "ReActAgent /chat          MCP 错误场景 (优雅降级)",
-            "ReActAgent /chat          Skill current-time",
+            "POST /v1/chat/completions  stream=false  ChatAgent 非流式 + model 验证",
+            "POST /v1/chat/completions  stream=true   ChatAgent 流式 SSE",
+            "POST /v1/chat/completions  stream=false  ChatAgent 多轮历史",
+            "POST /v1/chat/completions  stream=false  ChatAgent 自动配置",
+            "POST /v1/chat/completions  stream=false  ReActAgent execute_python_code",
+            "POST /v1/chat/completions  stream=true   ReActAgent 流式工具调用",
+            "POST /v1/chat/completions  stream=false  ReActAgent view_text_file",
+            "POST /v1/chat/completions  stream=false  ReActAgent MCP 非流式",
+            "POST /v1/chat/completions  stream=true   ReActAgent MCP 流式",
+            "POST /v1/chat/completions  stream=false  ReActAgent MCP 错误降级",
+            "POST /v1/chat/completions  stream=false  ReActAgent Skill current-time",
+            "GET  /v1/models            智能体列表格式验证",
         ]
         for i, name in enumerate(test_names):
             print(f"  {results[i]} [{i+1}] {name}")

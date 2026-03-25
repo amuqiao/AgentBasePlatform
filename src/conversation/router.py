@@ -1,8 +1,10 @@
 import json
+import time
 import uuid
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.auth.dependencies import get_current_user
@@ -79,11 +81,35 @@ async def send_message_stream(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    from src.agent.models import Agent
+    from src.runtime.model_provider import normalize_llm_config
+
     service = ConversationService(db)
+    conv = await service.get_conversation(conv_id, current_user.id)
+    agent_q = await db.execute(select(Agent).where(Agent.id == conv.agent_id))
+    agent = agent_q.scalar_one_or_none()
+    model_name = normalize_llm_config(agent.model_config_json)["model_name"] if agent else "unknown"
 
     async def event_generator():
+        completion_id = f"chatcmpl-{uuid.uuid4().hex}"
+        created_at = int(time.time())
         async for chunk in service.send_message_stream(conv_id, current_user.id, req.content):
-            yield f"data: {json.dumps({'content': chunk}, ensure_ascii=False)}\n\n"
+            data = {
+                "id": completion_id,
+                "object": "chat.completion.chunk",
+                "created": created_at,
+                "model": model_name,
+                "choices": [{"index": 0, "delta": {"content": chunk}, "finish_reason": None}],
+            }
+            yield f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+        stop_data = {
+            "id": completion_id,
+            "object": "chat.completion.chunk",
+            "created": created_at,
+            "model": model_name,
+            "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
+        }
+        yield f"data: {json.dumps(stop_data, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"
 
     return StreamingResponse(

@@ -7,6 +7,42 @@ from pydantic import BaseModel, ConfigDict, Field
 from src.runtime.model_provider import normalize_llm_config
 
 
+# --------------- OpenAI 兼容响应 Schema ---------------
+
+
+class OpenAIMessage(BaseModel):
+    role: str
+    content: str
+
+
+class OpenAIChoice(BaseModel):
+    index: int = 0
+    message: OpenAIMessage
+    finish_reason: str = "stop"
+
+
+class OpenAIUsage(BaseModel):
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+
+
+class OpenAIChatCompletion(BaseModel):
+    """非流式 chat/completions 响应（OpenAI 兼容格式 + 平台扩展字段）。"""
+
+    id: str
+    object: str = "chat.completion"
+    created: int
+    model: str
+    choices: list[OpenAIChoice]
+    usage: OpenAIUsage = Field(default_factory=OpenAIUsage)
+    # 平台扩展字段
+    agent_id: Optional[uuid.UUID] = None
+    agent_name: Optional[str] = None
+    agent_type: Optional[str] = None
+    tool_calls: list["ToolCallRecord"] = Field(default_factory=list)
+
+
 class AgentCreateRequest(BaseModel):
     name: str = Field(
         ..., min_length=1, max_length=128, description="智能体名称",

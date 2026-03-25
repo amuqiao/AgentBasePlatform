@@ -9,8 +9,9 @@ from src.common.middleware.request_context import RequestContextMiddleware
 from src.config import get_settings
 
 from src.auth.router import router as auth_router
-from src.agent.router import router as agent_router, chat_router as agent_chat_router
+from src.agent.router import router as agent_router
 from src.conversation.router import router as conversation_router
+from src.gateway.openai_router import router as openai_router
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
@@ -50,8 +51,8 @@ def create_app() -> FastAPI:
     # --- Routers ---
     app.include_router(auth_router)
     app.include_router(agent_router)
-    app.include_router(agent_chat_router)
     app.include_router(conversation_router)
+    app.include_router(openai_router)
 
     @app.on_event("startup")
     async def log_api_docs_url():
